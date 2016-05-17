@@ -15,7 +15,7 @@ object Ex2 {
     val conf = new SparkConf().setAppName("ex2").setMaster("local[*]").set("spark.default.parallelism", "20")
     val sc = new SparkContext(conf)
     val freqWordsLcl: Map[String, Int] = sc.textFile("resources/freq_list.txt")
-      .map { x =>
+      .map { x => // parse (word, count) from file
         val pattern = "([A-Za-z]+)\\t+([0-9]+)"
         val regex = pattern.r
         if (x.matches(pattern)) {
@@ -23,14 +23,20 @@ object Ex2 {
           (word, count.toInt)
         }
         else ("", 0)
-      }.sortBy(x => x._2).keys.top(vectorSize).zipWithIndex.toMap
-    val freqWords = sc.broadcast(freqWordsLcl).value
+      }
+      .sortBy(x => x._2)  // sort by count
+      .keys
+      .top(vectorSize)  // get top [vector size] words
+      .zipWithIndex // add index to each word in vector
+      .toMap  // save as map of word and its index
+
+    val freqWords = sc.broadcast(freqWordsLcl).value  // map of word and its index
 
     val resFreqWordsLcl: Map[Int, String] = freqWords.map(x => x._2 -> x._1) + (vectorSize -> "")
-    val resFreqWords = sc.broadcast(resFreqWordsLcl).value
+    val resFreqWords = sc.broadcast(resFreqWordsLcl).value  // map of index and its word
 
     val simlexLcl: List[String] = sc.textFile("resources/simlex_words.txt").flatMap(line => line.split(" ")).collect().toList
-    val simlex = sc.broadcast(simlexLcl).value
+    val simlex = sc.broadcast(simlexLcl).value  // list of all simlex words
 
     val corpus: RDD[String] = sc.textFile("resources/wacky_wiki_corpus_en1.words.parsed")//.filter(x => x.contains("iron") || x.contains("bird"))
 
